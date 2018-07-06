@@ -86,6 +86,25 @@ DragDropContext(TouchBackend({ scrollAngleRanges: [{ start: 30, end: 150 }, { st
 DragDropContext(TouchBackend({ scrollAngleRanges: [{ start: 300 }, { end: 60 }, { start: 120, end: 240 }] }));
 ```
 
+**getDropTargetElementsAtPoint**
+* Specify a custom function to find drop target elements at the given point.  Useful for improving performance in environments (iOS Safari) where document.elementsFromPoint is not available.
+* Default: undefined (use document.elementsFromPoint or inline elementsFromPoint "polyfill")
+```js
+const hasNative = document && (document.elementsFromPoint || document.msElementsFromPoint);
+
+function getDropTargetElementsAtPoint(x, y, availableDropTargets) {
+  return dropTargets.filter(t => {
+    const rect = t.getBoundingClientRect();
+    return (x >= rect.left && x <= rect.right && 
+            y <= rect.bottom && y >= rect.top);
+  });
+}
+
+// use custom function only if elementsFromPoint is not supported 
+DragDropContext(TouchBackend({
+  getDropTargetElementsAtPoint: !hasNative && getDropTargetElementsAtPoint,
+}))
+```
 
 ## Examples
 The `examples` folder has a sample integration. In order to build it, run:

@@ -184,6 +184,10 @@ export class TouchBackend {
             this.listenerTypes.push('keyboard')
         }
 
+        if (options.getDropTargetElementsAtPoint) {
+            this.getDropTargetElementsAtPoint = options.getDropTargetElementsAtPoint;
+        }
+
         this.getSourceClientOffset = this.getSourceClientOffset.bind(this);
         this.handleTopMoveStart = this.handleTopMoveStart.bind(this);
         this.handleTopMoveStartDelay = this.handleTopMoveStartDelay.bind(this);
@@ -447,7 +451,9 @@ export class TouchBackend {
         // Get the node elements of the hovered DropTargets
         const dragOverTargetNodes = dragOverTargetIds.map(key => this.targetNodes[key]);
         // Get the a ordered list of nodes that are touched by
-        let elementsAtPoint = elementsFromPoint(clientOffset.x, clientOffset.y);
+        let elementsAtPoint = this.getDropTargetElementsAtPoint
+          ? this.getDropTargetElementsAtPoint(clientOffset.x, clientOffset.y, dragOverTargetNodes)
+          : elementsFromPoint(clientOffset.x, clientOffset.y);
         // Extend list with SVG parents that are not receiving elementsFromPoint events (svg groups)
         let elementsAtPointExtended = [];
         for (let nodeId in elementsAtPoint){
