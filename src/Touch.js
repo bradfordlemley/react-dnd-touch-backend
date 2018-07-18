@@ -188,6 +188,8 @@ export class TouchBackend {
             this.getDropTargetElementsAtPoint = options.getDropTargetElementsAtPoint;
         }
 
+        this.useAllTargetNodes = options.useAllTargetNodes;
+
         this.getSourceClientOffset = this.getSourceClientOffset.bind(this);
         this.handleTopMoveStart = this.handleTopMoveStart.bind(this);
         this.handleTopMoveStartDelay = this.handleTopMoveStartDelay.bind(this);
@@ -209,7 +211,9 @@ export class TouchBackend {
         this.addEventListener(window, 'start',      this.getTopMoveStartHandler());
         this.addEventListener(window, 'start',      this.handleTopMoveStartCapture, true);
         this.addEventListener(window, 'move',       this.handleTopMove);
-        this.addEventListener(window, 'move',       this.handleTopMoveCapture, true);
+        if (!this.useAllTargetNodes) {
+            this.addEventListener(window, 'move',       this.handleTopMoveCapture, true);
+        }
         this.addEventListener(window, 'end',        this.handleTopMoveEndCapture, true);
 
         if (this.enableMouseEvents && !this.ignoreContextMenu) {
@@ -231,7 +235,9 @@ export class TouchBackend {
 
         this.removeEventListener(window, 'start', this.handleTopMoveStartCapture, true);
         this.removeEventListener(window, 'start', this.handleTopMoveStart);
-        this.removeEventListener(window, 'move',  this.handleTopMoveCapture, true);
+        if (!this.useAllTargetNodes) {
+           this.removeEventListener(window, 'move',  this.handleTopMoveCapture, true);
+        }
         this.removeEventListener(window, 'move',  this.handleTopMove);
         this.removeEventListener(window, 'end',   this.handleTopMoveEndCapture, true);
 
@@ -294,6 +300,11 @@ export class TouchBackend {
 
     connectDropTarget (targetId, node) {
         const handleMove = (e) => {
+            // the purpose is to add the targetId to dragOverTargetIds when the
+            // current touch point is in the node or its children
+            // this is inefficient since it gets called for every drop target,
+            // and elementFromPoint is inefficient and returns the same
+            // note: dragOverTargetIds gets emptied by the topMoveCaptureHandler
             let coords;
 
             if (!this.monitor.isDragging()) {
@@ -328,12 +339,16 @@ export class TouchBackend {
         /**
          * Attaching the event listener to the body so that touchmove will work while dragging over multiple target elements.
          */
-        this.addEventListener(document.querySelector('body'), 'move', handleMove);
+        if (!this.useAllTargetNodes) {
+            this.addEventListener(document.querySelector('body'), 'move', handleMove);
+        }
         this.targetNodes[targetId] = node;
 
         return () => {
             delete this.targetNodes[targetId];
-            this.removeEventListener(document.querySelector('body'), 'move', handleMove);
+            if (!this.useAllTargetNodes) {
+                this.removeEventListener(document.querySelector('body'), 'move', handleMove);
+            }
         };
     }
 
@@ -449,7 +464,7 @@ export class TouchBackend {
         e.preventDefault();
 
         // Get the node elements of the hovered DropTargets
-        const dragOverTargetNodes = dragOverTargetIds.map(key => this.targetNodes[key]);
+        const dragOverTargetNodes = this.useAllTargetNodes ? Object.values(this.targetNodes) : dragOverTargetIds.map(key => this.targetNodes[key]);
         // Get the a ordered list of nodes that are touched by
         let elementsAtPoint = this.getDropTargetElementsAtPoint
           ? this.getDropTargetElementsAtPoint(clientOffset.x, clientOffset.y, dragOverTargetNodes)
